@@ -99,12 +99,12 @@ from urllib import localhost, url2pathname, getproxies
 
 from urllib2 import HTTPError, URLError
 
-import _request
-import _rfc3986
-import _sockettimeout
+from . import _request
+from . import _rfc3986
+from . import _sockettimeout
 
-from _clientcookie import CookieJar
-from _response import closeable_response
+from ._clientcookie import CookieJar
+from ._response import closeable_response
 
 
 # used in User-Agent header sent

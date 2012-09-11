@@ -13,13 +13,13 @@ import copy
 import htmlentitydefs
 import re
 
-import _sgmllib_copy as sgmllib
+from . import _sgmllib_copy as sgmllib
 
-import _beautifulsoup
-import _form
-from _headersutil import split_header_words, is_html as _is_html
-import _request
-import _rfc3986
+from . import _beautifulsoup
+from . import _form
+from ._headersutil import split_header_words, is_html as _is_html
+from . import _request
+from . import _rfc3986
 
 DEFAULT_ENCODING = "latin-1"
 
@@ -128,7 +128,7 @@ class LinksFactory:
                  link_class=Link,
                  urltags=None,
                  ):
-        import _pullparser
+        from . import _pullparser
         if link_parser_class is None:
             link_parser_class = _pullparser.TolerantPullParser
         self.link_parser_class = link_parser_class
@@ -248,7 +248,7 @@ class TitleFactory:
         self._encoding = encoding
 
     def _get_title_text(self, parser):
-        import _pullparser
+        from . import _pullparser
         text = []
         tok = None
         while 1:
@@ -273,7 +273,7 @@ class TitleFactory:
         return COMPRESS_RE.sub(" ", "".join(text).strip())
 
     def title(self):
-        import _pullparser
+        from . import _pullparser
         p = _pullparser.TolerantPullParser(
             self._response, encoding=self._encoding)
         try:

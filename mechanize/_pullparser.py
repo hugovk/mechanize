@@ -34,11 +34,11 @@ under the terms of the BSD or ZPL 2.1 licenses.
 """
 
 import re, htmlentitydefs
-import _sgmllib_copy as sgmllib
+from . import _sgmllib_copy as sgmllib
 import HTMLParser
 from xml.sax import saxutils
 
-from _html import unescape, unescape_charref
+from ._html import unescape, unescape_charref
 
 
 class NoMoreTokensError(Exception): pass
@@ -384,7 +384,8 @@ class TolerantPullParser(_AbstractParser, sgmllib.SGMLParser):
 
 
 def _test():
-   import doctest, _pullparser
+   import doctest
+   from . import _pullparser
    return doctest.testmod(_pullparser)
 
 if __name__ == "__main__":

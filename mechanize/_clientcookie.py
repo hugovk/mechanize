@@ -44,9 +44,9 @@ MISSING_FILENAME_TEXT = ("a filename was not supplied (nor was the CookieJar "
                          "instance initialised with one)")
 DEFAULT_HTTP_PORT = "80"
 
-from _headersutil import split_header_words, parse_ns_headers
-from _util import isstringlike
-import _rfc3986
+from ._headersutil import split_header_words, parse_ns_headers
+from ._util import isstringlike
+from . import _rfc3986
 
 debug = logging.getLogger("mechanize.cookies").debug
 

@@ -70,13 +70,13 @@ import urllib
 import urlparse
 import warnings
 
-import _beautifulsoup
-import _request
+from . import _beautifulsoup
+from . import _request
 
 # from Python itself, for backwards compatibility of raised exceptions
 import sgmllib
 # bundled copy of sgmllib
-import _sgmllib_copy
+from . import _sgmllib_copy
 
 
 VERSION = "0.2.11"

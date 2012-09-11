@@ -19,12 +19,12 @@ except NameError:
     import sets
     set = sets.Set
 
-from _request import Request
-import _response
-import _rfc3986
-import _sockettimeout
-import _urllib2_fork
-from _util import isstringlike
+from ._request import Request
+from . import _response
+from . import _rfc3986
+from . import _sockettimeout
+from . import _urllib2_fork
+from ._util import isstringlike
 
 open_file = open
 

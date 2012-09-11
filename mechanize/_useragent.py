@@ -13,12 +13,12 @@ included with the distribution).
 
 import warnings
 
-import _auth
-import _gzip
-import _opener
-import _response
-import _sockettimeout
-import _urllib2
+from . import _auth
+from . import _gzip
+from . import _opener
+from . import _response
+from . import _sockettimeout
+from . import _urllib2
 
 
 class UserAgentBase(_opener.OpenerDirector):

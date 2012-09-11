@@ -4,16 +4,16 @@ from urllib2 import \
      URLError, \
      HTTPError
 # ...and from mechanize
-from _auth import \
+from ._auth import \
      HTTPProxyPasswordMgr, \
      HTTPSClientCertMgr
-from _debug import \
+from ._debug import \
      HTTPResponseDebugProcessor, \
      HTTPRedirectDebugProcessor
 # crap ATM
 ## from _gzip import \
 ##      HTTPGzipProcessor
-from _urllib2_fork import \
+from ._urllib2_fork import \
      AbstractBasicAuthHandler, \
      AbstractDigestAuthHandler, \
      BaseHandler, \
@@ -33,7 +33,7 @@ from _urllib2_fork import \
      ProxyDigestAuthHandler, \
      ProxyHandler, \
      UnknownHandler
-from _http import \
+from ._http import \
      HTTPEquivProcessor, \
      HTTPRefererProcessor, \
      HTTPRefreshProcessor, \
@@ -41,10 +41,10 @@ from _http import \
      RobotExclusionError
 import httplib
 if hasattr(httplib, 'HTTPS'):
-    from _urllib2_fork import HTTPSHandler
+    from ._urllib2_fork import HTTPSHandler
 del httplib
-from _opener import OpenerDirector, \
+from ._opener import OpenerDirector, \
      SeekableResponseOpener, \
      build_opener, install_opener, urlopen
-from _request import \
+from ._request import \
      Request

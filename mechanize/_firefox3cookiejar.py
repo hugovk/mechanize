@@ -11,8 +11,8 @@ COPYING.txt included with the distribution).
 import logging
 import time
 
-from _clientcookie import CookieJar, Cookie, MappingIterator
-from _util import isstringlike, experimental
+from ._clientcookie import CookieJar, Cookie, MappingIterator
+from ._util import isstringlike, experimental
 debug = logging.getLogger("mechanize.cookies").debug
 
 

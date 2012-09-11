@@ -20,15 +20,15 @@ import robotparser
 import socket
 import time
 
-import _sgmllib_copy as sgmllib
-from _urllib2_fork import HTTPError, BaseHandler
+from . import _sgmllib_copy as sgmllib
+from ._urllib2_fork import HTTPError, BaseHandler
 
-from _headersutil import is_html
-from _html import unescape, unescape_charref
-from _request import Request
-from _response import response_seek_wrapper
-import _rfc3986
-import _sockettimeout
+from ._headersutil import is_html
+from ._html import unescape, unescape_charref
+from ._request import Request
+from ._response import response_seek_wrapper
+from . import _rfc3986
+from . import _sockettimeout
 
 debug = logging.getLogger("mechanize").debug
 debug_robots = logging.getLogger("mechanize.robots").debug
@@ -224,7 +224,7 @@ class MechanizeRobotFileParser(robotparser.RobotFileParser):
         self._timeout = _sockettimeout._GLOBAL_DEFAULT_TIMEOUT
 
     def set_opener(self, opener=None):
-        import _opener
+        from . import _opener
         if opener is None:
             opener = _opener.OpenerDirector()
         self._opener = opener

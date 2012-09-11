@@ -234,7 +234,8 @@ def parse_ns_headers(ns_headers):
 
 
 def _test():
-   import doctest, _headersutil
+   import doctest
+   from . import _headersutil
    return doctest.testmod(_headersutil)
 
 if __name__ == "__main__":

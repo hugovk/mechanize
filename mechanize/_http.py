@@ -12,11 +12,11 @@ COPYING.txt included with the distribution).
 
 """
 
-import HTMLParser
-from cStringIO import StringIO
-import htmlentitydefs
+import html.parser
+from io import StringIO
+import html.entities
 import logging
-import robotparser
+import urllib.robotparser
 import socket
 import time
 
@@ -51,7 +51,7 @@ class AbstractHeadParser:
     head_elems = ("html", "head",
                   "title", "base",
                   "script", "style", "meta", "link", "object")
-    _entitydefs = htmlentitydefs.name2codepoint
+    _entitydefs = html.entities.name2codepoint
     _encoding = DEFAULT_ENCODING
 
     def __init__(self):
@@ -98,9 +98,9 @@ class AbstractHeadParser:
 
 
 class XHTMLCompatibleHeadParser(AbstractHeadParser,
-                                HTMLParser.HTMLParser):
+                                html.parser.HTMLParser):
     def __init__(self):
-        HTMLParser.HTMLParser.__init__(self)
+        html.parser.HTMLParser.__init__(self)
         AbstractHeadParser.__init__(self)
 
     def handle_starttag(self, tag, attrs):
@@ -201,7 +201,7 @@ class HTTPEquivProcessor(BaseHandler):
                                               self.head_parser_class())
                 finally:
                     response.seek(0)
-            except (HTMLParser.HTMLParseError,
+            except (html.parser.HTMLParseError,
                     sgmllib.SGMLParseError):
                 pass
             else:
@@ -216,10 +216,10 @@ class HTTPEquivProcessor(BaseHandler):
     https_response = http_response
 
 
-class MechanizeRobotFileParser(robotparser.RobotFileParser):
+class MechanizeRobotFileParser(urllib.robotparser.RobotFileParser):
 
     def __init__(self, url='', opener=None):
-        robotparser.RobotFileParser.__init__(self, url)
+        urllib.robotparser.RobotFileParser.__init__(self, url)
         self._opener = opener
         self._timeout = _sockettimeout._GLOBAL_DEFAULT_TIMEOUT
 
@@ -240,9 +240,9 @@ class MechanizeRobotFileParser(robotparser.RobotFileParser):
                       timeout=self._timeout)
         try:
             f = self._opener.open(req)
-        except HTTPError, f:
+        except HTTPError as f:
             pass
-        except (IOError, socket.error, OSError), exc:
+        except (IOError, socket.error, OSError) as exc:
             debug_robots("ignoring error opening %r: %s" %
                                (self.url, exc))
             return
@@ -264,7 +264,7 @@ class MechanizeRobotFileParser(robotparser.RobotFileParser):
 
 class RobotExclusionError(HTTPError):
     def __init__(self, request, *args):
-        apply(HTTPError.__init__, (self,)+args)
+        HTTPError.__init__(*(self,)+args)
         self.request = request
 
 class HTTPRobotRulesProcessor(BaseHandler):
@@ -272,7 +272,7 @@ class HTTPRobotRulesProcessor(BaseHandler):
     handler_order = 800
 
     try:
-        from httplib import HTTPMessage
+        from http.client import HTTPMessage
     except:
         from mimetools import Message
         http_response_class = Message
@@ -421,7 +421,7 @@ class HTTPRefreshProcessor(BaseHandler):
     def http_response(self, request, response):
         code, msg, hdrs = response.code, response.msg, response.info()
 
-        if code == 200 and hdrs.has_key("refresh"):
+        if code == 200 and "refresh" in hdrs:
             refresh = hdrs.getheaders("refresh")[0]
             try:
                 pause, newurl = parse_refresh_header(refresh)

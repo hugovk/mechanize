@@ -9,14 +9,15 @@ included with the distribution).
 
 """
 
-import copy, re, os, urllib, urllib2
+import copy, re, os
+import urllib.parse, urllib.error, urllib.request
 
 from ._html import DefaultFactory
 from . import _response
 from . import _request
 from . import _rfc3986
 from . import _sockettimeout
-from . import _urllib2_fork
+from ._urllib import request
 from ._useragent import UserAgentBase
 
 class BrowserStateError(Exception): pass
@@ -25,7 +26,7 @@ class FormNotFoundError(Exception): pass
 
 
 def sanepathname2url(path):
-    urlpath = urllib.pathname2url(path)
+    urlpath = urllib.parse.pathname2url(path)
     if os.name == "nt" and urlpath.startswith("///"):
         urlpath = urlpath[2:]
     # XXX don't ask me about the mac...
@@ -34,14 +35,14 @@ def sanepathname2url(path):
 
 class History:
     """
-
     Though this will become public, the implied interface is not yet stable.
-
     """
     def __init__(self):
         self._history = []  # LIFO
+
     def add(self, request, response):
         self._history.append((request, response))
+
     def back(self, n, _response):
         response = _response  # XXX move Browser._response into this class?
         while n > 0 or response is None:
@@ -51,8 +52,10 @@ class History:
                 raise BrowserStateError("already at start of history")
             n -= 1
         return request, response
+
     def clear(self):
         del self._history[:]
+
     def close(self):
         for request, response in self._history:
             if response is not None:
@@ -60,7 +63,7 @@ class History:
         del self._history[:]
 
 
-class HTTPRefererProcessor(_urllib2_fork.BaseHandler):
+class HTTPRefererProcessor(request.BaseHandler):
     def http_request(self, request):
         # See RFC 2616 14.36.  The only times we know the source of the
         # request URI has a URI associated with it are redirect, and
@@ -95,11 +98,7 @@ class Browser(UserAgentBase):
     default_features = copy.copy(UserAgentBase.default_features)
     default_features.append("_referer")
 
-    def __init__(self,
-                 factory=None,
-                 history=None,
-                 request_class=None,
-                 ):
+    def __init__(self, factory=None, history=None, request_class=None):
         """
 
         Only named arguments should be passed to this constructor.
@@ -228,7 +227,7 @@ class Browser(UserAgentBase):
         success = True
         try:
             response = UserAgentBase.open(self, request, data)
-        except urllib2.HTTPError, error:
+        except urllib.error.HTTPError as error:
             success = False
             if error.fp is None:  # not a response
                 raise
@@ -390,7 +389,7 @@ class Browser(UserAgentBase):
         """
         if self._response is None:
             raise BrowserStateError("not viewing any document")
-        if self.request.get_type() not in ["http", "https"]:
+        if self.request.get_type() not in ("http", "https"):
             raise BrowserStateError("can't set cookie for non-HTTP/HTTPS "
                                     "transactions")
         cookiejar = self._ua_handlers["_cookies"].cookiejar
@@ -615,7 +614,7 @@ class Browser(UserAgentBase):
 
         """
         try:
-            return self._filter_links(self._factory.links(), **kwds).next()
+            return next(self._filter_links(self._factory.links(), **kwds))
         except StopIteration:
             raise LinkNotFoundError()
 

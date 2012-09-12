@@ -32,13 +32,13 @@ COPYING.txt included with the distribution).
 
 """
 
-import sys, re, copy, time, urllib, types, logging
-try:
-    import threading
-    _threading = threading; del threading
-except ImportError:
-    import dummy_threading
-    _threading = dummy_threading; del dummy_threading
+import sys
+import re
+import copy
+import time
+import logging
+import io
+import urllib, urllib.parse
 
 MISSING_FILENAME_TEXT = ("a filename was not supplied (nor was the CookieJar "
                          "instance initialised with one)")
@@ -63,8 +63,8 @@ def reraise_unmasked_exceptions(unmasked=()):
     if issubclass(etype, unmasked):
         raise
     # swallowed an exception
-    import traceback, StringIO
-    f = StringIO.StringIO()
+    import traceback
+    f = io.StringIO()
     traceback.print_exc(None, f)
     msg = f.getvalue()
     warnings.warn("mechanize bug!\n%s" % msg, stacklevel=2)
@@ -217,6 +217,7 @@ HTTP_PATH_SAFE = "%/;:@&=+$,!~*'()"
 ESCAPED_CHAR_RE = re.compile(r"%([0-9a-fA-F][0-9a-fA-F])")
 def uppercase_escaped_char(match):
     return "%%%s" % match.group(1).upper()
+
 def escape_path(path):
     """Escape any invalid characters in HTTP URL, and uppercase all escapes."""
     # There's no knowing what character encoding was used to create URLs
@@ -227,9 +228,7 @@ def escape_path(path):
     # And here, kind of: draft-fielding-uri-rfc2396bis-03
     # (And in draft IRI specification: draft-duerst-iri-05)
     # (And here, for new URI schemes: RFC 2718)
-    if isinstance(path, types.UnicodeType):
-        path = path.encode("utf-8")
-    path = urllib.quote(path, HTTP_PATH_SAFE)
+    path = urllib.parse.quote(path, HTTP_PATH_SAFE)
     path = ESCAPED_CHAR_RE.sub(uppercase_escaped_char, path)
     return path
 
@@ -279,20 +278,10 @@ def is_third_party(request):
 
     """
     req_host = request_host_lc(request)
+    # TODO: _urllib2_support's Python 3 counterpart?
     # the origin request's request-host was stuffed into request by
     # _urllib2_support.AbstractHTTPHandler
     return not domain_match(req_host, reach(request.origin_req_host))
-
-
-try:
-    all
-except NameError:
-    # python 2.4
-    def all(iterable):
-        for x in iterable:
-            if not x:
-                return False
-        return True
 
 
 class Cookie:
@@ -389,16 +378,20 @@ class Cookie:
         self._rest = copy.copy(rest)
 
     def has_nonstandard_attr(self, name):
-        return self._rest.has_key(name)
+        return name in self._rest
+
     def get_nonstandard_attr(self, name, default=None):
         return self._rest.get(name, default)
+
     def set_nonstandard_attr(self, name, value):
         self._rest[name] = value
+
     def nonstandard_attr_keys(self):
-        return self._rest.keys()
+        return list(self._rest.keys())
 
     def is_expired(self, now=None):
-        if now is None: now = time.time()
+        if now is None:
+            now = time.time()
         return (self.expires is not None) and (self.expires <= now)
 
     def __eq__(self, other):
@@ -408,8 +401,10 @@ class Cookie:
         return not (self == other)
 
     def __str__(self):
-        if self.port is None: p = ""
-        else: p = ":"+self.port
+        if self.port is None:
+            p = ""
+        else:
+            p = ":" + self.port
         limit = self.domain + p + self.path
         if self.value is not None:
             namevalue = "%s=%s" % (self.name, self.value)
@@ -966,39 +961,17 @@ class DefaultCookiePolicy(CookiePolicy):
         return True
 
 
-def vals_sorted_by_key(adict):
-    keys = adict.keys()
-    keys.sort()
-    return map(adict.get, keys)
-
-class MappingIterator:
-    """Iterates over nested mapping, depth-first, in sorted order by key."""
-    def __init__(self, mapping):
-        self._s = [(vals_sorted_by_key(mapping), 0, None)]  # LIFO stack
-
-    def __iter__(self): return self
-
-    def next(self):
-        # this is hairy because of lack of generators
-        while 1:
-            try:
-                vals, i, prev_item = self._s.pop()
-            except IndexError:
-                raise StopIteration()
-            if i < len(vals):
-                item = vals[i]
-                i = i + 1
-                self._s.append((vals, i, prev_item))
-                try:
-                    item.items
-                except AttributeError:
-                    # non-mapping
-                    break
-                else:
-                    # mapping
-                    self._s.append((vals_sorted_by_key(item), 0, item))
-                    continue
-        return item
+def mapping_iterator(mapping):
+    """
+    Yield nexted mappings, depth first, sorted by key value
+    """
+    keys = sorted(mapping.keys())
+    for item in map(mapping.get, keys):
+        if hasattr(item, "items"):
+            yield item
+        else:
+            for subitem in mapping_iterator(item):
+                yield subitem
 
 
 # Used as second parameter to dict.get method, to distinguish absent
@@ -1188,7 +1161,7 @@ class CookieJar:
         The request object (usually a mechanize.Request instance) must support
         the methods get_full_url, get_host, is_unverifiable, get_type,
         has_header, get_header, header_items and add_unredirected_header, as
-        documented by urllib2.
+        documented by urllib.
         """
         debug("add_cookie_header")
         cookies = self.cookies_for_request(request)
@@ -1254,7 +1227,7 @@ class CookieJar:
                     # boolean cookie-attribute is present, but has no value
                     # (like "discard", rather than "port=80")
                     v = True
-                if standard.has_key(k):
+                if k in standard:
                     # only first value is significant
                     continue
                 if k == "domain":
@@ -1457,8 +1430,8 @@ class CookieJar:
 
                 def no_matching_rfc2965(ns_cookie, lookup=lookup):
                     key = ns_cookie.domain, ns_cookie.path, ns_cookie.name
-                    return not lookup.has_key(key)
-                ns_cookies = filter(no_matching_rfc2965, ns_cookies)
+                    return key not in lookup
+                ns_cookies = list(filter(no_matching_rfc2965, ns_cookies))
 
             if ns_cookies:
                 cookies.extend(ns_cookies)
@@ -1494,9 +1467,9 @@ class CookieJar:
         cookie: mechanize.Cookie instance
         """
         c = self._cookies
-        if not c.has_key(cookie.domain): c[cookie.domain] = {}
+        if cookie.domain not in c: c[cookie.domain] = {}
         c2 = c[cookie.domain]
-        if not c2.has_key(cookie.path): c2[cookie.path] = {}
+        if cookie.path not in c2: c2[cookie.path] = {}
         c3 = c2[cookie.path]
         c3[cookie.name] = cookie
 
@@ -1598,36 +1571,41 @@ class CookieJar:
 
     def __getitem__(self, i):
         if i == 0:
-            self._getitem_iterator = self.__iter__()
-        elif self._prev_getitem_index != i-1: raise IndexError(
-            "CookieJar.__getitem__ only supports sequential iteration")
+            self._getitem_iterator = iter(self)
+        elif self._prev_getitem_index != i - 1:
+            raise IndexError(
+                "CookieJar.__getitem__ only supports sequential iteration")
         self._prev_getitem_index = i
         try:
-            return self._getitem_iterator.next()
+            return next(self._getitem_iterator)
         except StopIteration:
             raise IndexError()
 
     def __iter__(self):
-        return MappingIterator(self._cookies)
+        return mapping_iterator(self._cookies)
 
     def __len__(self):
         """Return number of contained cookies."""
         i = 0
-        for cookie in self: i = i + 1
+        for cookie in self:
+            i = i + 1
         return i
 
     def __repr__(self):
         r = []
-        for cookie in self: r.append(repr(cookie))
+        for cookie in self:
+            r.append(repr(cookie))
         return "<%s[%s]>" % (self.__class__, ", ".join(r))
 
     def __str__(self):
         r = []
-        for cookie in self: r.append(str(cookie))
+        for cookie in self:
+            r.append(str(cookie))
         return "<%s[%s]>" % (self.__class__, ", ".join(r))
 
 
-class LoadError(Exception): pass
+class LoadError(Exception):
+    pass
 
 class FileCookieJar(CookieJar):
     """CookieJar that can be loaded from and saved to a file.

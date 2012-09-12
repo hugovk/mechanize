@@ -10,9 +10,6 @@ COPYING.txt included with the distribution).
 """
 
 import os, re
-from types import StringType
-from types import UnicodeType
-STRING_TYPES = StringType, UnicodeType
 
 from ._util import http2time
 from . import _rfc3986
@@ -103,7 +100,7 @@ def split_header_words(header_values):
     [[('Basic', None), ('realm', '"foobar"')]]
 
     """
-    assert type(header_values) not in STRING_TYPES
+    assert not isinstance(header_values, (str, bytes))
     result = []
     for text in header_values:
         orig_text = text

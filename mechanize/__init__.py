@@ -152,14 +152,12 @@ from ._clientcookie import Cookie, CookiePolicy, DefaultCookiePolicy, \
      CookieJar, FileCookieJar, LoadError, request_host_lc as request_host, \
      effective_request_host
 from ._lwpcookiejar import LWPCookieJar, lwp_cookie_str
-# 2.4 raises SyntaxError due to generator / try/finally use
-if sys.version_info[:2] > (2,4):
-    try:
-        import sqlite3
-    except ImportError:
-        pass
-    else:
-        from ._firefox3cookiejar import Firefox3CookieJar
+try:
+    import sqlite3
+except ImportError:
+    pass
+else:
+    from ._firefox3cookiejar import Firefox3CookieJar
 from ._mozillacookiejar import MozillaCookieJar
 from ._msiecookiejar import MSIECookieJar
 

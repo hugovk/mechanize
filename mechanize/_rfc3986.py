@@ -35,7 +35,7 @@ def clean_url(url, encoding):
 ##     - IE will return you the url in the encoding you send it
 ##     - Mozilla/Firefox will send you latin-1 if there's no non latin-1
 ##     characters in your link. It will send you utf-8 however if there are...
-    if type(url) == type(""):
+    if isinstance(url, bytes):
         url = url.decode(encoding, "replace")
     url = url.strip()
     # for second param to urllib.quote(), we want URI_CHARS, minus the

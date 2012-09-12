@@ -16,19 +16,20 @@ included with the distribution).
 
 """
 
-import copy, mimetools, urllib2
-from cStringIO import StringIO
+import copy, email
+import urllib.error
+from io import BytesIO
 
 
-def len_of_seekable(file_):
+def len_of_seekable(file):
     # this function exists because evaluation of len(file_.getvalue()) on every
     # .read() from seek_wrapper would be O(N**2) in number of .read()s
-    pos = file_.tell()
-    file_.seek(0, 2)  # to end
+    pos = file.tell()
+    file.seek(0, 2)  # to end
     try:
-        return file_.tell()
+        return file.tell()
     finally:
-        file_.seek(pos)
+        file.seek(pos)
 
 
 # XXX Andrew Dalke kindly sent me a similar class in response to my request on
@@ -37,7 +38,7 @@ def len_of_seekable(file_):
 # tests from it, at least...
 
 # For testing seek_wrapper invariant (note that
-# test_urllib2.HandlerTest.test_seekable is expected to fail when this
+# test_urllib.HandlerTest.test_seekable is expected to fail when this
 # invariant checking is turned on).  The invariant checking is done by module
 # ipdc, which is available here:
 # http://aspn.activestate.com/ASPN/Cookbook/Python/Recipe/436834
@@ -48,10 +49,9 @@ class seek_wrapper:
 
     This is only designed for seeking on readonly file-like objects.
 
-    Wrapped file-like object must have a read method.  The readline method is
-    only supported if that method is present on the wrapped object.  The
-    readlines method is always supported.  xreadlines and iteration are
-    supported only for Python 2.2 and above.
+    Wrapped file-like object must have a read method.  The readline
+    method is only supported if that method is present on the wrapped
+    object.  The readlines method is always supported.
 
     Public attributes:
 
@@ -59,13 +59,13 @@ class seek_wrapper:
     is_closed: true iff .close() has been called
 
     WARNING: All other attributes of the wrapped object (ie. those that are not
-    one of wrapped, read, readline, readlines, xreadlines, __iter__ and next)
+    one of wrapped, read, readline, readlines, xreadlines, __iter__ and __next__)
     are passed through unaltered, which may or may not make sense for your
     particular file object.
 
     """
     # General strategy is to check that cache is full enough, then delegate to
-    # the cache (self.__cache, which is a cStringIO.StringIO instance).  A seek
+    # the cache (self.__cache, which is an io.BytesIO instance).  A seek
     # position (self.__pos) is maintained independently of the cache, in order
     # that a single cache may be shared between multiple seek_wrapper objects.
     # Copying using module copy shares the cache in this way.
@@ -75,7 +75,7 @@ class seek_wrapper:
         self.__read_complete_state = [False]
         self.__is_closed_state = [False]
         self.__have_readline = hasattr(self.wrapped, "readline")
-        self.__cache = StringIO()
+        self.__cache = BytesIO()
         self.__pos = 0  # seek position
 
     def invariant(self):
@@ -88,11 +88,18 @@ class seek_wrapper:
         self.wrapped.close()
         self.is_closed = True
 
+    @property
+    def read_complete(self):
+        return self.__read_complete_state[0]
+
+    @read_complete.getter
+    def read_complete(self, value):
+        if not self.is_closed:
+            self.__read_complete_state[0] = bool(value)
+
     def __getattr__(self, name):
         if name == "is_closed":
             return self.__is_closed_state[0]
-        elif name == "read_complete":
-            return self.__read_complete_state[0]
 
         wrapped = self.__dict__.get("wrapped")
         if wrapped:
@@ -103,9 +110,6 @@ class seek_wrapper:
     def __setattr__(self, name, value):
         if name == "is_closed":
             self.__is_closed_state[0] = bool(value)
-        elif name == "read_complete":
-            if not self.is_closed:
-                self.__read_complete_state[0] = bool(value)
         else:
             self.__dict__[name] = value
 
@@ -238,13 +242,13 @@ class seek_wrapper:
         self.__pos = self.__cache.tell()
         return data
 
-    def __iter__(self): return self
-    def next(self):
+    def __iter__(self):
+        return self
+
+    def __next__(self):
         line = self.readline()
         if line == "": raise StopIteration
         return line
-
-    xreadlines = __iter__
 
     def __repr__(self):
         return ("<%s at %s whose wrapped object = %r>" %
@@ -268,7 +272,7 @@ class response_seek_wrapper(seek_wrapper):
         cpy._headers = copy.copy(self.info())
         return cpy
 
-    # Note that .info() and .geturl() (the only two urllib2 response methods
+    # Note that .info() and .geturl() (the only two urllib response methods
     # that are not implemented by seek_wrapper) must be here explicitly rather
     # than by seek_wrapper's __getattr__ delegation) so that the nasty
     # dynamically-created HTTPError classes in get_seek_wrapper_class() get the
@@ -284,18 +288,28 @@ class response_seek_wrapper(seek_wrapper):
         self.seek(0)
         self.read()
         self.close()
-        cache = self._seek_wrapper__cache = StringIO()
+        cache = self._seek_wrapper__cache = BytesIO()
         cache.write(data)
         self.seek(0)
 
 
 class eoffile:
     # file-like object that always claims to be at end-of-file...
-    def read(self, size=-1): return ""
-    def readline(self, size=-1): return ""
-    def __iter__(self): return self
-    def next(self): return ""
-    def close(self): pass
+    def read(self, size=-1):
+        return ""
+
+    def readline(self, size=-1):
+        return ""
+
+    def __iter__(self):
+        return self
+
+    def __next__(self):
+        return ""
+
+    def close(self):
+        pass
+
 
 class eofresponse(eoffile):
     def __init__(self, url, headers, code, msg):
@@ -303,8 +317,12 @@ class eofresponse(eoffile):
         self._headers = headers
         self.code = code
         self.msg = msg
-    def geturl(self): return self._url
-    def info(self): return self._headers
+
+    def geturl(self):
+        return self._url
+
+    def info(self):
+        return self._headers
 
 
 class closeable_response:
@@ -319,7 +337,7 @@ class closeable_response:
     .info()
     .geturl()
     .__iter__()
-    .next()
+    .__next__()
     .close()
 
     and the following attributes are supported:
@@ -351,7 +369,7 @@ class closeable_response:
         else:
             self.fileno = lambda: None
         self.__iter__ = self.fp.__iter__
-        self.next = self.fp.next
+        self.__next__ = self.fp.__next__
 
     def __repr__(self):
         return '<%s at %s whose fp = %r>' % (
@@ -412,7 +430,7 @@ def make_response(data, headers, url, code, msg):
 
     """
     mime_headers = make_headers(headers)
-    r = closeable_response(StringIO(data), mime_headers, url, code, msg)
+    r = closeable_response(BytesIO(data), mime_headers, url, code, msg)
     return response_seek_wrapper(r)
 
 
@@ -423,16 +441,16 @@ def make_headers(headers):
     hdr_text = []
     for name_value in headers:
         hdr_text.append("%s: %s" % name_value)
-    return mimetools.Message(StringIO("\n".join(hdr_text)))
+    return email.message_from_string("\n".join(hdr_text))
 
-
+# TODO: Didn't we already fork?
 # Rest of this module is especially horrible, but needed, at least until fork
 # urllib2.  Even then, may want to preseve urllib2 compatibility.
 
 def get_seek_wrapper_class(response):
     # in order to wrap response objects that are also exceptions, we must
     # dynamically subclass the exception :-(((
-    if (isinstance(response, urllib2.HTTPError) and
+    if (isinstance(response, urllib.error.HTTPError) and
         not hasattr(response, "seek")):
         if response.__class__.__module__ == "__builtin__":
             exc_class_name = response.__class__.__name__

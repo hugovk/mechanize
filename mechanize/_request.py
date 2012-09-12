@@ -12,12 +12,12 @@ import logging
 
 from . import _rfc3986
 from . import _sockettimeout
-from . import _urllib2_fork
+from ._urllib import request
 
 warn = logging.getLogger("mechanize").warning
 
 
-class Request(_urllib2_fork.Request):
+class Request(request.Request):
     def __init__(self, url, data=None, headers={},
                  origin_req_host=None, unverifiable=False, visit=None,
                  timeout=_sockettimeout._GLOBAL_DEFAULT_TIMEOUT):
@@ -31,7 +31,7 @@ class Request(_urllib2_fork.Request):
         if not _rfc3986.is_clean_uri(url):
             warn("url argument is not a URI "
                  "(contains illegal characters) %r" % url)
-        _urllib2_fork.Request.__init__(self, url, data, headers)
+        super().__init__(url, data, headers)
         self.selector = None
         self.visit = visit
         self.timeout = timeout

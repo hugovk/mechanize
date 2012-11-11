@@ -458,6 +458,16 @@ class Tag(PageElement):
 
     """Represents a found HTML tag with its attributes and contents."""
 
+    # Port get_text and the text property from Beautiful Soup 4
+    # Use (NavigableString, CData) to filter out comments
+    def getText(self, separator=""):
+        return separator.join(elem for elem in self.recursiveChildGenerator()
+                              if type(elem) in (NavigableString, CData))
+
+    get_text = getText
+    text = property(getText)
+
+
     def _invert(h):
         "Cheap function to invert a hash."
         i = {}
@@ -1820,12 +1830,12 @@ class UnicodeDammit:
         %encoding is a string recognized by encodings.aliases'''
 
         # strip Byte Order Mark (if present)
-        if (len(data) >= 4) and (data[:2] == '\xfe\xff') \
+        if (len(data) >= 4) and (data[:2] == b'\xfe\xff') \
                and (data[2:4] != '\x00\x00'):
             encoding = 'utf-16be'
             data = data[2:]
-        elif (len(data) >= 4) and (data[:2] == '\xff\xfe') \
-                 and (data[2:4] != '\x00\x00'):
+        elif (len(data) >= 4) and (data[:2] == b'\xff\xfe') \
+                 and (data[2:4] != b'\x00\x00'):
             encoding = 'utf-16le'
             data = data[2:]
         elif data[:3] == '\xef\xbb\xbf':

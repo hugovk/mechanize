@@ -1388,8 +1388,8 @@ class CookieJar:
     def _make_cookies(self, response, request):
         # get cookie-attributes for RFC 2965 and Netscape protocols
         headers = response.info()
-        rfc2965_hdrs = headers.getheaders("Set-Cookie2")
-        ns_hdrs = headers.getheaders("Set-Cookie")
+        rfc2965_hdrs = headers.get_all("Set-Cookie2")
+        ns_hdrs = headers.get_all("Set-Cookie")
 
         rfc2965 = self._policy.rfc2965
         netscape = self._policy.netscape
@@ -1483,8 +1483,8 @@ class CookieJar:
 
         The response object (usually be the result of a call to
         mechanize.urlopen, or similar) should support an info method, which
-        returns a mimetools.Message object (in fact, the 'mimetools.Message
-        object' may be any object that provides a getheaders method).
+        returns a mimetools.Message object (in fact, the 'email.message.Message
+        object' may be any object that provides a get_all method).
 
         The request object (usually a mechanize.Request instance) must support
         the methods get_full_url, get_type, get_host, and is_unverifiable, as
